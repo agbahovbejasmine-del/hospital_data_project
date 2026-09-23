@@ -7,7 +7,8 @@ import seaborn as sns
 import sklearn as sl
 import joblib
 import plotly.express as px
-st.set_page_config(page_title= 'Hospital Data Engineering Project')
+from utils import anova_load, heat_map 
+st.set_page_config(page_title= 'Hospital Data Science Project')
 st.title('Interactive Statistical Analysis Dashboard')
 
 # I used cache_data to prevent Streamlit from rereading the CSV file to improve speed.
@@ -33,7 +34,7 @@ model, model2, ordina1, ordinal2, ordinal3, ordinal4 = load_fullmodel()
 
 #Setting up the website titles and summart filters
 
-st.subheader('Summary Tables')
+st.subheader('Summary Tables Analysis')
 st.sidebar.header('Filter and Settings')
 
 num_cols = clean_df.select_dtypes(include=[np.number]).columns.to_list()
@@ -48,15 +49,15 @@ min_value2=int(clean_df[select_var2].min())
 max_value2= int(clean_df[select_var2].max())
 range2= st.sidebar.slider('Select second value range:',min_value2, max_value2,(min_value2, max_value2)) 
 
-num_cols3= clean_df.select_dtypes(include=[np.number]).columns.to_list()
-select_var3 =st.sidebar.selectbox('Select  third variable range to display summary tables:', num_cols3)
-min_value3=int(clean_df[select_var3].min())
-max_value3= int(clean_df[select_var3].max())
-range3= st.sidebar.slider('Select third value range:',min_value3, max_value3,(min_value3, max_value3)) 
+#num_cols3= clean_df.select_dtypes(include=[np.number]).columns.to_list()
+#select_var3 =st.sidebar.selectbox('Select  third variable range to display summary tables:', num_cols3)
+#min_value3=int(clean_df[select_var3].min())
+#max_value3= int(clean_df[select_var3].max())
+#range3= st.sidebar.slider('Select third value range:',min_value3, max_value3,(min_value3, max_value3)) 
 
 # I'm using exceptions to prevent the user from using the same variables twice.
 
-var_list= [select_var1, select_var2, select_var3]
+var_list= [select_var1, select_var2]
 if len(var_list) != len(set(var_list)):
     st.error('You cannot select the same variables for filtering. Please try again.')
     # I use this so that the other error from not defining filter_df is ignored.
@@ -64,29 +65,55 @@ if len(var_list) != len(set(var_list)):
 
 # As I am using multiple 'and' statements, I seperate then by row to make it easier to read since I don't have cells like in Jupyter.
 filter_df=clean_df[(clean_df[select_var1] >= range1[0]) & (clean_df[select_var1] <= range1[1])
-                   &(clean_df[select_var2] >= range2[0])&(clean_df[select_var2] <= range2[1])
-                   &(clean_df[select_var3] >= range3[0])&(clean_df[select_var3] <= range3[1])]
+                   &(clean_df[select_var2] >= range2[0])&(clean_df[select_var2] <= range2[1])]
+                  # &(clean_df[select_var3] >= range3[0])&(clean_df[select_var3] <= range3[1])]
 
 
 # Creating tabs
-tab1, tab2 = st.tabs(['Summary Tables', 'Scatter Graph'])
+tab1, tab2, tab3 = st.tabs(['Summary Tables', 'Statistical Tests','Predictive Model'])
 
 with tab1:
     st.subheader('Filtered Summary Tables')
-    st.dataframe(filter_df, use_container_width=True )
+    st.dataframe(filter_df,width= 'stretch')
 
 with tab2:
-    st.subheader('Scatter Graph Analysis from Summary Tables')
-    st.info('This graph shows the data selected from the first two variables.')
-    #fig_scat=px.scatter(
-    #filter_df,
-    #x=select_var1,
-    #y=select_var2,
-    #title= f'Scatter Graph: {select_var1} against {select_var2}',
-    #labels={select_var1 : select_var1, select_var2: select_var2},
-    #size='Billing Amount ($)',
-    #hover_data= ['Name', 'Medical Condition'],
-    #template='plotly_white'
-#)
-   # st.plotly_chart(fig_scat, use_container_width=True)
+    st.header('Statistical Tests')
+    st.subheader('Anova Group Test amongst Company Groups')
+    st.info('This Anova Test calculates if there is a significant difference in the Days Spent in their respective hospitals')
+    
+    if st.button('Press to see Anova Test'):
+        anova_results = anova_load()
+        st.markdown(anova_results)
+    
+    if st.button('Generate Heatmap'):
+        heat_fig= heat_map()
+        st.pyplot(heat_fig)
+        st.caption('Key: More concentrated colour indicates more patients')
+
+
+
+with tab3:
+    st.header('Predictor Model of the Billing Cost')
+    st.subheader('Enter Prediction Details:')
+    age = st.number_input('Please enter your Age:')
+    gender= st.chat_input('Please enter your sex: Male or Female')
+
+    if st.button('Generate Prediction'):
+        min_age= clean_df['Age'].min()
+        max_age = clean_df['Age'].max()
+        if age < min_age or age > max_age:
+            st.warning(f'Warning: {age} is outside the data range ({min_age - max_age}) Are you sure to want to proceed?')
+
+        gender_choice = clean_df['Gender'].dropna().astype(str).str.lower().unique()
+        if gender is None or gender.strip().lower() not in gender_choice:
+            st.warning(
+                f"Please enter a valid sex: {', '.join(sorted(gender_choice))}.")
+        
+
+
+    
+
+    
+    
+
   
