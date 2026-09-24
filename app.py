@@ -4,10 +4,11 @@ import numpy as np
 import statsmodels as sms
 import scipy as sp
 import seaborn as sns
-import sklearn as sl
 import joblib
 import plotly.express as px
-from utils import anova_load, heat_map 
+from utils import anova_load, heat_map , normal, shapiro, load_fullmodel
+from scipy.stats import norm
+from scipy import stats
 st.set_page_config(page_title= 'Hospital Data Science Project')
 st.title('Interactive Statistical Analysis Dashboard')
 
@@ -18,18 +19,6 @@ def load_data():
     return clean_df
 clean_df=load_data()
 # I'm setting up the loading of the model
-@st.cache_resource
-def load_fullmodel():
-    model= joblib.load('price_model')
-    model2= joblib.load('price_model2')
-    one_hot=joblib.load('one_hot_encoder')
-    ordinal1=joblib.load('ordinal1')
-    ordinal2=joblib.load('ordinal2')
-    ordinal3=joblib.load('ordinal3')
-    ordinal4=joblib.load('ordinal4')
-    return model, model2, ordinal1, ordinal2, ordinal3, ordinal4
-
-model, model2, ordina1, ordinal2, ordinal3, ordinal4 = load_fullmodel()
 
 
 #Setting up the website titles and summart filters
@@ -85,29 +74,88 @@ with tab2:
         anova_results = anova_load()
         st.markdown(anova_results)
     
+    st.subheader('Distribution of Ages and Shapiro-Wilks Test')
+    st.info('This shows the distribution of all ages in the dataset.')
+    if st.button('General Normal Curve'):
+        normal_fig= normal()
+        st.pyplot(normal_fig)
+
+    if st.button('Shapiro- Wilks Test'):
+        shapy_test= shapiro()
+        st.markdown(shapy_test)
+        st.info("Note : From the value of the p-value, I assume that the data is too large for the Sharpiro-Wilks test to be accurate.According to the Central Limit Theorem, since N>5000 and it looks like a bell curve, I will assume the distribution of patient's age is normal so that I can use it for future tests as N=37144")
+
+    st.subheader('Chi Squared Test')
+    st.info('This Chi Squared Test is used to test if the Medical Condition and the Days Spent have any relationship.')
     if st.button('Generate Heatmap'):
-        heat_fig= heat_map()
-        st.pyplot(heat_fig)
-        st.caption('Key: More concentrated colour indicates more patients')
-
-
+            heat_fig= heat_map()
+            st.pyplot(heat_fig)
+            st.caption('Key: More concentrated colour indicates more patients')
 
 with tab3:
     st.header('Predictor Model of the Billing Cost')
+    st.warning('This model is trained on synthetic, inaccurate data. Do not use it to make informed decisions. Proceed with caution.')
     st.subheader('Enter Prediction Details:')
-    age = st.number_input('Please enter your Age:')
-    gender= st.chat_input('Please enter your sex: Male or Female')
+    assets= load_fullmodel()
+
+    num_col, str_col = st.columns(2)
+#df_features=['Age', 'Gender', 'Medication', 'Blood Type', 'Hospital', 'Days Spent','Admission Type Sort','Insurance Provider Sort','Medical Condition Sort','Test Results Sort']
+    with num_col:
+        age = st.number_input('Please enter your age:')
+        gender= st.selectbox("Please enter your sex:" , ["Male","Female"])
+        blood= st.selectbox("Please enter your blood type:", ['AB-','B-','A-','O+','A+','AB+','O-','B+'])
+        days= st.slider('How many Days did you spent in the hospital?:')
+    
+    with str_col:
+        hospital= st.text_input('What hospital do you go to?(Write with every first letter capitalized):')
+        medication=st.selectbox('What medication are you using/do you use? :', ['Ibruprofen', 'Aspirin', 'Penicillin', 'Lipitor','Paracetamol','Other'])
+        admin = st.selectbox('What would you say is your admission type?:', ['Elective','Urgent','Emergency','Other'])
+        medic = st.selectbox('What is your Medical Condition?:', ['Diabetes','Arthritis','Obesity', 'Cancer',' Asthma', 'Hypertension','Other'])
+        ins= st.selectbox('Who is your Insurance Provider?:', ['UnitedHeathcare','Cigna','Medicare','Blue Cross','Aetna', 'Other'])
+        test= st.selectbox('What were your Test Results?:', ['Normal','Abnormal', 'Inconclusive', 'Other'])
+    
 
     if st.button('Generate Prediction'):
         min_age= clean_df['Age'].min()
         max_age = clean_df['Age'].max()
         if age < min_age or age > max_age:
             st.warning(f'Warning: {age} is outside the data range ({min_age - max_age}) Are you sure to want to proceed?')
+        elif age is None:
+            st.warning('You might want to enter a value for Age. Are you sure you want to proceed?')
+         
+        admin_mapping={'Elective':0, 'Emergency':1, 'Urgent':2}
+        admin_mapped=admin_mapping[admin]
+        ins_mapping ={'UnitedHealthcare':0,'Cigna':1,'Aetna':2,'Blue Cross':3,'Medicare':4,'Humana':5,'Kaiser Permanente':6,'Anthem':7,'Centene':8,'Molina Healthcare':9}
+        ins_mapped= ins_mapping[ins]
+        medic_mapping ={'Hypertension':0, 'Asthma':1, 'Diabetes':2, 'Arthritis':3, 'Cancer':4, 'Heart Disease':5, 'Stroke':6, 'Kidney Disease':7, 'Liver Disease':8, 'Obesity':9, 'Depression':10, 'Anxiety':11, 'COPD':12, 'Osteoporosis':13, 'Alzheimer\'s Disease':14, 'Parkinson\'s Disease':15, 'Multiple Sclerosis':16, 'Epilepsy':17, 'HIV/AIDS':18}
+        medic_mapped = medic_mapping[medic]
+        test_mapping={'Normal':0, 'Abnormal':1}
+        test_mapped= test_mapping[test]
+       
+       if gender =='Female':
+            gender_female= 1
+            gender_male= 0
+            
+       else:
+            gender_female= 1
+            gender_male= 0
+    
+       
+        try:
+            
+            if hasattr(encoded_features, 'toarray'):
+                encoded_features = encoded_features.toarray()
+            final_features=np.hstack([age, gender_mapped, days, admin_mapped, ins_mapped, medic_mapped, test_mapped]).reshape(1,-1)
+            prediction = assets['model'].predict(final_features)
+            st.markdown('Final Estimation Cost')
+            st.success(f'The Predicted Billing Amount is ${prediction :.2f}')
+            st.info(f'The MAE of this Model is around $12 000')
+        except Exception as e:
+            st.error(f'Transformation Error : {str(e)}')
 
-        gender_choice = clean_df['Gender'].dropna().astype(str).str.lower().unique()
-        if gender is None or gender.strip().lower() not in gender_choice:
-            st.warning(
-                f"Please enter a valid sex: {', '.join(sorted(gender_choice))}.")
+
+    
+        
         
 
 
