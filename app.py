@@ -37,31 +37,51 @@ select_var2 =st.sidebar.selectbox('Select  second variable range to display summ
 min_value2=int(clean_df[select_var2].min())
 max_value2= int(clean_df[select_var2].max())
 range2= st.sidebar.slider('Select second value range:',min_value2, max_value2,(min_value2, max_value2)) 
-
-#num_cols3= clean_df.select_dtypes(include=[np.number]).columns.to_list()
-#select_var3 =st.sidebar.selectbox('Select  third variable range to display summary tables:', num_cols3)
-#min_value3=int(clean_df[select_var3].min())
-#max_value3= int(clean_df[select_var3].max())
-#range3= st.sidebar.slider('Select third value range:',min_value3, max_value3,(min_value3, max_value3)) 
-
-# I'm using exceptions to prevent the user from using the same variables twice.
-
 var_list= [select_var1, select_var2]
 if len(var_list) != len(set(var_list)):
     st.error('You cannot select the same variables for filtering. Please try again.')
     # I use this so that the other error from not defining filter_df is ignored.
     st.stop()
-
-# As I am using multiple 'and' statements, I seperate then by row to make it easier to read since I don't have cells like in Jupyter.
-filter_df=clean_df[(clean_df[select_var1] >= range1[0]) & (clean_df[select_var1] <= range1[1])
+try:
+    select =['Name', 'Age','Gender','Blood Type','Medical Condition', 'Date of Admission', 'Doctor', 'Hospital', 'Insurance Provider', 'Billing Amount ($)', 'Room Number', 'Admission Type', 'Discharge Date', 'Medication', 'Test Results', 'Days Spent']
+    filter_row=clean_df[(clean_df[select_var1] >= range1[0]) & (clean_df[select_var1] <= range1[1])
                    &(clean_df[select_var2] >= range2[0])&(clean_df[select_var2] <= range2[1])]
-                  # &(clean_df[select_var3] >= range3[0])&(clean_df[select_var3] <= range3[1])]
 
+    filter_df= filter_row[select]
+
+except Exception as e:
+    st.error(f'Table Error: {str(e)}')
+
+if st.sidebar.button('I would like more options...'):
+    str_cols1 = [
+        col
+        for col in clean_df.select_dtypes(include ='str').columns
+        if col != 'Name'
+    ]
+    select_var3 =st.sidebar.selectbox('Select a string variable to display summary tables:', str_cols1)
+
+    options = list(clean_df[select_var3].dropna().unique())
+    range3 = st.sidebar.selectbox(f'Select value for {select_var3}:', options)
+    var_list2 = [select_var1, select_var2, select_var3]
+    if len(var_list2) != len(set(var_list2)):
+            st.error('You cannot select the same variables for filtering. Please try again.')
+# I use this so that the other error from not defining filter_df is ignored.
+            st.stop()
+    try:
+            select =['Name', 'Age','Gender','Blood Type','Medical Condition', 'Date of Admission', 'Doctor', 'Hospital', 'Insurance Provider', 'Billing Amount ($)', 'Room Number', 'Admission Type', 'Discharge Date', 'Medication', 'Test Results', 'Days Spent']
+            filter_row=clean_df[(clean_df[select_var1] >= range1[0]) & (clean_df[select_var1] <= range1[1])
+                   &(clean_df[select_var2] >= range2[0])&(clean_df[select_var2] <= range2[1])
+                   &(clean_df[select_var3] == range3)]
+            filter_df= filter_row[select]
+    except Exception as e:
+            st.error(f'Table Error: {str(e)}')
+# As I am using multiple 'and' statements, I seperate then by row to make it easier to read since I don't have cells like in Jupyter.
 
 # Creating tabs
 tab1, tab2, tab3 = st.tabs(['Summary Tables', 'Statistical Tests','Predictive Model'])
 
 with tab1:
+    
     st.subheader('Filtered Summary Tables')
     st.dataframe(filter_df,width= 'stretch')
 
@@ -101,54 +121,64 @@ with tab3:
     num_col, str_col = st.columns(2)
 #df_features=['Age', 'Gender', 'Medication', 'Blood Type', 'Hospital', 'Days Spent','Admission Type Sort','Insurance Provider Sort','Medical Condition Sort','Test Results Sort']
     with num_col:
-        age = st.number_input('Please enter your age:')
+        age = st.number_input('Please enter your age:',1,100,50)
         gender= st.selectbox("Please enter your sex:" , ["Male","Female"])
-        blood= st.selectbox("Please enter your blood type:", ['AB-','B-','A-','O+','A+','AB+','O-','B+'])
-        days= st.slider('How many Days did you spent in the hospital?:')
+        
+        days= st.slider('How many Days did you spent in the hospital? (Select 1 if hospital visit was on the same day.):',1,365,5)
     
     with str_col:
-        hospital= st.text_input('What hospital do you go to?(Write with every first letter capitalized):')
-        medication=st.selectbox('What medication are you using/do you use? :', ['Ibruprofen', 'Aspirin', 'Penicillin', 'Lipitor','Paracetamol','Other'])
+        
+       
         admin = st.selectbox('What would you say is your admission type?:', ['Elective','Urgent','Emergency','Other'])
         medic = st.selectbox('What is your Medical Condition?:', ['Diabetes','Arthritis','Obesity', 'Cancer',' Asthma', 'Hypertension','Other'])
-        ins= st.selectbox('Who is your Insurance Provider?:', ['UnitedHeathcare','Cigna','Medicare','Blue Cross','Aetna', 'Other'])
+        ins= st.selectbox('Who is your Insurance Provider?:', ['UnitedHealthcare','Cigna','Medicare','Blue Cross','Aetna', 'Other'])
         test= st.selectbox('What were your Test Results?:', ['Normal','Abnormal', 'Inconclusive', 'Other'])
     
-
+#df_features=['Age', 'Gender', 'Days Spent','Admission Type Sort','Insurance Provider Sort','Medical Condition Sort','Test Results Sort']
     if st.button('Generate Prediction'):
         min_age= clean_df['Age'].min()
         max_age = clean_df['Age'].max()
         if age < min_age or age > max_age:
-            st.warning(f'Warning: {age} is outside the data range ({min_age - max_age}) Are you sure to want to proceed?')
+            st.warning(f'Warning:  The Age ({age}) chosen is outside the data range ({min_age} - {max_age}) Are you sure to want to proceed?')
         elif age is None:
             st.warning('You might want to enter a value for Age. Are you sure you want to proceed?')
+        min_days= clean_df['Days Spent'].min()
+        max_days= clean_df['Days Spent'].max()
+        if days > max_days :
+            st.warning(f'Warning :The number of days chosen ({days}) is outside the data range ({min_days}- {max_days}). Are you sure you want to proceed? ')
          
-        admin_mapping={'Elective':0, 'Emergency':1, 'Urgent':2}
+        admin_mapping={'Elective':0, 'Emergency':1, 'Urgent':2, 'Other':-1}
         admin_mapped=admin_mapping[admin]
-        ins_mapping ={'UnitedHealthcare':0,'Cigna':1,'Aetna':2,'Blue Cross':3,'Medicare':4,'Humana':5,'Kaiser Permanente':6,'Anthem':7,'Centene':8,'Molina Healthcare':9}
+        ins_mapping ={'UnitedHealthcare':0,'Cigna':1,'Aetna':2,'Blue Cross':3,'Medicare':4,'Humana':5,'Kaiser Permanente':6,'Anthem':7,'Centene':8,'Molina Healthcare':9, 'Other':-1}
         ins_mapped= ins_mapping[ins]
-        medic_mapping ={'Hypertension':0, 'Asthma':1, 'Diabetes':2, 'Arthritis':3, 'Cancer':4, 'Heart Disease':5, 'Stroke':6, 'Kidney Disease':7, 'Liver Disease':8, 'Obesity':9, 'Depression':10, 'Anxiety':11, 'COPD':12, 'Osteoporosis':13, 'Alzheimer\'s Disease':14, 'Parkinson\'s Disease':15, 'Multiple Sclerosis':16, 'Epilepsy':17, 'HIV/AIDS':18}
+        medic_mapping ={'Hypertension':0, 'Asthma':1, 'Diabetes':2, 'Arthritis':3, 'Cancer':4, 'Heart Disease':5, 'Stroke':6, 'Kidney Disease':7, 'Liver Disease':8, 'Obesity':9, 'Depression':10, 'Anxiety':11, 'COPD':12, 'Osteoporosis':13, 'Alzheimer\'s Disease':14, 'Parkinson\'s Disease':15, 'Multiple Sclerosis':16, 'Epilepsy':17, 'HIV/AIDS':18, 'Other':-1}
         medic_mapped = medic_mapping[medic]
-        test_mapping={'Normal':0, 'Abnormal':1}
+        test_mapping={'Normal':0, 'Abnormal':1, 'Other':-1}
         test_mapped= test_mapping[test]
-       
-       if gender =='Female':
-            gender_female= 1
-            gender_male= 0
-            
-       else:
-            gender_female= 1
-            gender_male= 0
+        
+        if admin_mapped or ins_mapped or medic_mapped == -1:
+            st.warning("Please note that the predicted value will be less accurate and it will be predicted lower than it would, as 'Other' has been selected.")
+        if gender == 'Female':
+            gender_female = 1
+            gender_male = 0
+        else:
+            gender_female = 0
+            gender_male = 1
     
        
         try:
-            
-            if hasattr(encoded_features, 'toarray'):
-                encoded_features = encoded_features.toarray()
-            final_features=np.hstack([age, gender_mapped, days, admin_mapped, ins_mapped, medic_mapped, test_mapped]).reshape(1,-1)
-            prediction = assets['model'].predict(final_features)
+            final_features=pd.DataFrame(
+                [{'Age':age,
+                'Gender': gender, 
+                'Days Spent' :days, 
+                'Admission Type Sort':admin_mapped, 
+                'Insurance Provider Sort':ins_mapped,
+                'Medical Condition Sort':medic_mapped,
+                'Test Results Sort' : test_mapped,}
+                ])
+            prediction = assets['rf_model'].predict(final_features)
             st.markdown('Final Estimation Cost')
-            st.success(f'The Predicted Billing Amount is ${prediction :.2f}')
+            st.success(f'The Predicted Billing Amount is ${prediction[0]:.2f}')
             st.info(f'The MAE of this Model is around $12 000')
         except Exception as e:
             st.error(f'Transformation Error : {str(e)}')
