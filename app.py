@@ -6,8 +6,8 @@ import scipy as sp
 import seaborn as sns
 import joblib
 import plotly.express as px
-from utils import anova_load, heat_map , normal, shapiro, load_fullmodel
-from scipy.stats import norm
+from utils import anova_load, heat_map , normal, shapiro, load_fullmodel, chi_2
+from scipy.stats import norm, chi2_contingency
 from scipy import stats
 st.set_page_config(page_title= 'Hospital Data Science Project')
 st.title('Interactive Statistical Analysis Dashboard')
@@ -25,19 +25,44 @@ clean_df=load_data()
 
 st.subheader('Summary Tables Analysis')
 st.sidebar.header('Filter and Settings')
-
-num_cols = clean_df.select_dtypes(include=[np.number]).columns.to_list()
+num_cols = [
+        col
+        for col in clean_df.select_dtypes(include=[np.number]).columns
+        if col != 'Admission Type Sort' and col != 'Insurance Provider Sort' and col != 'Medical Condition Sort' and col != 'Test Results Sort' and col!= 'Date of Admission' and col != 'Discharge Date'
+    ]
 select_var1= st.sidebar.selectbox('Select  first variable range:',num_cols)
 min_value1=int(clean_df[select_var1].min())
 max_value1= int(clean_df[select_var1].max())
 range1= st.sidebar.slider('Select first value range:',min_value1, max_value1,(min_value1, max_value1))
 
-num_cols2= clean_df.select_dtypes(include=[np.number]).columns.to_list()
-select_var2 =st.sidebar.selectbox('Select  second variable range to display summary tables:', num_cols2)
+
+select_var2 =st.sidebar.selectbox('Select  second variable range to display summary tables:', num_cols)
 min_value2=int(clean_df[select_var2].min())
 max_value2= int(clean_df[select_var2].max())
 range2= st.sidebar.slider('Select second value range:',min_value2, max_value2,(min_value2, max_value2)) 
-var_list= [select_var1, select_var2]
+
+clean_df['Date of Admission'] = pd.to_datetime(clean_df['Date of Admission'], errors='coerce')
+clean_df['Discharge Date'] = pd.to_datetime(clean_df['Discharge Date'], errors='coerce')
+
+date_cols = [
+     date
+     for date in clean_df.select_dtypes(include=['datetime64']).columns        
+     ]
+
+select_date = st.sidebar.selectbox('Select a date variable to display summary tables:', date_cols)
+
+filter_date = pd.to_datetime(st.sidebar.date_input('Select a minimum date to filter the dataset:', 
+ min_value=pd.to_datetime('2020-01-01'), max_value=pd.to_datetime('2023-12-31')))
+filter_date2 = pd.to_datetime(st.sidebar.date_input('Select a maximum date to filter the dataset:',
+ min_value=filter_date, max_value=pd.to_datetime('2023-12-31')))
+
+select_date2 = st.sidebar.selectbox('Select the second date variable to display summary tables:', date_cols)
+filter_date3 = pd.to_datetime(st.sidebar.date_input('Select another minimum date to filter the dataset:', 
+ min_value=pd.to_datetime('2020-01-01'), max_value=pd.to_datetime('2023-12-31')))
+filter_date4 = pd.to_datetime(st.sidebar.date_input('Select another maximum date to filter the dataset:',
+ min_value=filter_date3, max_value=pd.to_datetime('2023-12-31')))
+
+var_list= [select_var1, select_var2, select_date]
 if len(var_list) != len(set(var_list)):
     st.error('You cannot select the same variables for filtering. Please try again.')
     # I use this so that the other error from not defining filter_df is ignored.
@@ -45,24 +70,37 @@ if len(var_list) != len(set(var_list)):
 try:
     select =['Name', 'Age','Gender','Blood Type','Medical Condition', 'Date of Admission', 'Doctor', 'Hospital', 'Insurance Provider', 'Billing Amount ($)', 'Room Number', 'Admission Type', 'Discharge Date', 'Medication', 'Test Results', 'Days Spent']
     filter_row=clean_df[(clean_df[select_var1] >= range1[0]) & (clean_df[select_var1] <= range1[1])
-                   &(clean_df[select_var2] >= range2[0])&(clean_df[select_var2] <= range2[1])]
+                   &(clean_df[select_var2] >= range2[0])&(clean_df[select_var2] <= range2[1])
+                   &(clean_df[select_date] >= filter_date) & (clean_df[select_date] <= filter_date2)
+                   &(clean_df[select_date2] >= filter_date3) & (clean_df[select_date2] <= filter_date4)]
 
     filter_df= filter_row[select]
-
+    if len(filter_df) == 0:
+        st.warning('The filtered dataset is empty. Please adjust your filters.')
+        st.stop()
+    if filter_date > filter_date2:
+        st.error('The minimum date cannot be greater than the maximum date. Please try again.')
+        st.stop()
 except Exception as e:
     st.error(f'Table Error: {str(e)}')
 
-if st.sidebar.button('I would like more options...'):
-    str_cols1 = [
+if st.sidebar.toggle('I would like more options...'):
+    str_cols = [
         col
-        for col in clean_df.select_dtypes(include ='str').columns
+        for col in clean_df.select_dtypes(include='str').columns
         if col != 'Name'
     ]
-    select_var3 =st.sidebar.selectbox('Select a string variable to display summary tables:', str_cols1)
+    select_var3 = st.sidebar.selectbox('Select a string variable to display summary tables:', str_cols)
 
     options = list(clean_df[select_var3].dropna().unique())
     range3 = st.sidebar.selectbox(f'Select value for {select_var3}:', options)
-    var_list2 = [select_var1, select_var2, select_var3]
+    
+    select_var4= st.sidebar.selectbox('Select a second string variable to display summary tables:', str_cols)
+    
+    options = list(clean_df[select_var4].dropna().unique())
+    range4 = st.sidebar.selectbox(f'Select second value for {select_var4}:', options)
+
+    var_list2 = [select_var1, select_var2, select_date, select_var3, select_var4]
     if len(var_list2) != len(set(var_list2)):
             st.error('You cannot select the same variables for filtering. Please try again.')
 # I use this so that the other error from not defining filter_df is ignored.
@@ -71,8 +109,20 @@ if st.sidebar.button('I would like more options...'):
             select =['Name', 'Age','Gender','Blood Type','Medical Condition', 'Date of Admission', 'Doctor', 'Hospital', 'Insurance Provider', 'Billing Amount ($)', 'Room Number', 'Admission Type', 'Discharge Date', 'Medication', 'Test Results', 'Days Spent']
             filter_row=clean_df[(clean_df[select_var1] >= range1[0]) & (clean_df[select_var1] <= range1[1])
                    &(clean_df[select_var2] >= range2[0])&(clean_df[select_var2] <= range2[1])
-                   &(clean_df[select_var3] == range3)]
+                   &(clean_df[select_date] >= filter_date) & (clean_df[select_date] <= filter_date2)
+                   &(clean_df[select_var3] == range3)
+                   &(clean_df[select_var4] == range4)]
             filter_df= filter_row[select]
+
+            if len(filter_df) == 0:
+                st.warning('The filtered dataset is empty. Please adjust your filters.')
+                st.stop()
+
+# Although I made the minimum of filter_date2 to be the value of filter_date, I still added this error message in case the user changes the minimum date after selecting the maximum date.
+            if filter_date > filter_date2:
+                st.error('The minimum date cannot be greater than the maximum date. Please try again.')
+                st.stop()
+
     except Exception as e:
             st.error(f'Table Error: {str(e)}')
 # As I am using multiple 'and' statements, I seperate then by row to make it easier to read since I don't have cells like in Jupyter.
@@ -90,27 +140,31 @@ with tab2:
     st.subheader('Anova Group Test amongst Company Groups')
     st.info('This Anova Test calculates if there is a significant difference in the Days Spent in their respective hospitals')
     
-    if st.button('Press to see Anova Test'):
+    if st.toggle('Press to see Anova Test'):
         anova_results = anova_load()
         st.markdown(anova_results)
     
     st.subheader('Distribution of Ages and Shapiro-Wilks Test')
     st.info('This shows the distribution of all ages in the dataset.')
-    if st.button('General Normal Curve'):
+    if st.toggle('General Normal Curve'):
         normal_fig= normal()
         st.pyplot(normal_fig)
 
-    if st.button('Shapiro- Wilks Test'):
+    if st.toggle('Shapiro- Wilks Test'):
         shapy_test= shapiro()
         st.markdown(shapy_test)
         st.info("Note : From the value of the p-value, I assume that the data is too large for the Sharpiro-Wilks test to be accurate.According to the Central Limit Theorem, since N>5000 and it looks like a bell curve, I will assume the distribution of patient's age is normal so that I can use it for future tests as N=37144")
 
     st.subheader('Chi Squared Test')
     st.info('This Chi Squared Test is used to test if the Medical Condition and the Days Spent have any relationship.')
-    if st.button('Generate Heatmap'):
+    if st.toggle('Generate Heatmap'):
             heat_fig= heat_map()
             st.pyplot(heat_fig)
             st.caption('Key: More concentrated colour indicates more patients')
+    if st.toggle('Chi Squared Test'):
+        chi_squared = chi_2()
+        st.markdown(chi_squared)
+        st.info('Note: The Chi-Squared Test shows that the p-value is significantly greater than 0.05, which means that there is not a significant relationship between the Medical Condition and the Days Spent in the hospital. This means, according to the dataset, the Medical Condition of a patient has no significant effect on how long they stay in the hospital.')
 
 with tab3:
     st.header('Predictor Model of the Billing Cost')

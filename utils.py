@@ -9,7 +9,7 @@ import seaborn as sns
 import sklearn 
 import joblib 
 import plotly.express as px
-from scipy.stats import norm
+from scipy.stats import norm,  chi2_contingency
 from scipy import stats 
 
 def anova_load():
@@ -103,3 +103,21 @@ def load_fullmodel():
         'sort_admissions':ordinal4
     }
     return model_assets
+
+def chi_2():
+    clean_df= pd.read_csv('clean_healthcare_dataset.csv')
+    contingency_table2 = pd.crosstab(clean_df['Days Spent'],clean_df['Medical Condition'])
+    chi2_stat, p_value, dof, expected = chi2_contingency(contingency_table2)
+    
+    chi2_results = f'''
+    
+    Statistical Values: 
+
+    Chi-Squared Statistic: {chi2_stat:.3f} 
+    
+    P-Value: {p_value:.4f}
+    
+    Degrees of Freedom: {dof}
+    
+    '''
+    return chi2_results
