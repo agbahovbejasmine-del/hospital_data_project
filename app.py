@@ -44,47 +44,73 @@ range2= st.sidebar.slider('Select second value range:',min_value2, max_value2,(m
 clean_df['Date of Admission'] = pd.to_datetime(clean_df['Date of Admission'], errors='coerce')
 clean_df['Discharge Date'] = pd.to_datetime(clean_df['Discharge Date'], errors='coerce')
 
-date_cols = [
-     date
-     for date in clean_df.select_dtypes(include=['datetime64']).columns        
-     ]
 
-select_date = st.sidebar.selectbox('Select a date variable to display summary tables:', date_cols)
-
-filter_date = pd.to_datetime(st.sidebar.date_input('Select a minimum date to filter the dataset:', 
- min_value=pd.to_datetime('2020-01-01'), max_value=pd.to_datetime('2023-12-31')))
-filter_date2 = pd.to_datetime(st.sidebar.date_input('Select a maximum date to filter the dataset:',
- min_value=filter_date, max_value=pd.to_datetime('2023-12-31')))
-
-select_date2 = st.sidebar.selectbox('Select the second date variable to display summary tables:', date_cols)
-filter_date3 = pd.to_datetime(st.sidebar.date_input('Select another minimum date to filter the dataset:', 
- min_value=pd.to_datetime('2020-01-01'), max_value=pd.to_datetime('2023-12-31')))
-filter_date4 = pd.to_datetime(st.sidebar.date_input('Select another maximum date to filter the dataset:',
- min_value=filter_date3, max_value=pd.to_datetime('2023-12-31')))
-
-var_list= [select_var1, select_var2, select_date]
+var_list= [select_var1, select_var2]
 if len(var_list) != len(set(var_list)):
-    st.error('You cannot select the same variables for filtering. Please try again.')
-    # I use this so that the other error from not defining filter_df is ignored.
-    st.stop()
+        st.error('You cannot select the same variables for filtering. Please try again.')
+        st.stop()
+
 try:
     select =['Name', 'Age','Gender','Blood Type','Medical Condition', 'Date of Admission', 'Doctor', 'Hospital', 'Insurance Provider', 'Billing Amount ($)', 'Room Number', 'Admission Type', 'Discharge Date', 'Medication', 'Test Results', 'Days Spent']
     filter_row=clean_df[(clean_df[select_var1] >= range1[0]) & (clean_df[select_var1] <= range1[1])
-                   &(clean_df[select_var2] >= range2[0])&(clean_df[select_var2] <= range2[1])
-                   &(clean_df[select_date] >= filter_date) & (clean_df[select_date] <= filter_date2)
-                   &(clean_df[select_date2] >= filter_date3) & (clean_df[select_date2] <= filter_date4)]
+                   &(clean_df[select_var2] >= range2[0])&(clean_df[select_var2] <= range2[1])]
 
     filter_df= filter_row[select]
     if len(filter_df) == 0:
         st.warning('The filtered dataset is empty. Please adjust your filters.')
         st.stop()
-    if filter_date > filter_date2:
-        st.error('The minimum date cannot be greater than the maximum date. Please try again.')
-        st.stop()
+
 except Exception as e:
     st.error(f'Table Error: {str(e)}')
 
-if st.sidebar.toggle('I would like more options...'):
+date_cols = [
+     date
+     for date in clean_df.select_dtypes(include=['datetime64']).columns        
+     ]
+
+if st.sidebar.toggle('I would like to filter by date variables...'):
+    select_date = st.sidebar.selectbox('Select a date variable to display summary tables:', date_cols)
+    filter_date = pd.to_datetime(st.sidebar.date_input('Select a minimum date to filter the dataset:', 
+                                                        min_value=pd.to_datetime('2020-01-01'), max_value=pd.to_datetime('2023-12-31')))
+    filter_date2 = pd.to_datetime(st.sidebar.date_input('Select a maximum date to filter the dataset:',
+                                                          min_value=filter_date, max_value=pd.to_datetime('2023-12-31')))
+    select_date2 = st.sidebar.selectbox('Select the second date variable to display summary tables:', date_cols)
+    filter_date3 = pd.to_datetime(st.sidebar.date_input('Select another minimum date to filter the dataset:', 
+                                                        min_value=pd.to_datetime('2020-01-01'), max_value=pd.to_datetime('2023-12-31')))
+    filter_date4 = pd.to_datetime(st.sidebar.date_input('Select another maximum date to filter the dataset:',
+                                                        min_value=filter_date3, max_value=pd.to_datetime('2023-12-31')))
+    var_list= [select_var1, select_var2, select_date,select_date2]
+    if len(var_list) != len(set(var_list)):
+         st.error('You cannot select the same variables for filtering. Please try again.')
+    # I use this so that the other error from not defining filter_df is ignored. 
+         st.stop()
+    try:
+        select =['Name', 'Age','Gender','Blood Type','Medical Condition', 'Date of Admission', 'Doctor', 'Hospital', 'Insurance Provider', 'Billing Amount ($)', 'Room Number', 'Admission Type', 'Discharge Date', 'Medication', 'Test Results', 'Days Spent']
+        filter_row=clean_df[(clean_df[select_var1] >= range1[0]) & (clean_df[select_var1] <= range1[1])
+                            &(clean_df[select_var2] >= range2[0])&(clean_df[select_var2] <= range2[1])
+                            &(clean_df[select_date] >= filter_date) & (clean_df[select_date] <= filter_date2)
+                            &(clean_df[select_date2] >= filter_date3) & (clean_df[select_date2] <= filter_date4)]
+        filter_df= filter_row[select]
+        if len(filter_df) == 0:
+             st.warning('The filtered dataset is empty. Please adjust your filters.')
+             st.stop()
+        if filter_date > filter_date2:
+            st.error('The minimum date cannot be greater than the maximum date. Please try again.')
+            st.stop()
+    except Exception as e:
+         st.error(f'Table Error: {str(e)}')
+
+if st.sidebar.toggle('I would like all of the variables to be filtered as well...'):
+    select_date = st.sidebar.selectbox('Select a date variable to display summary tables:', date_cols)
+    filter_date = pd.to_datetime(st.sidebar.date_input('Select a minimum date to filter the dataset:', 
+                                                    min_value=pd.to_datetime('2020-01-01'), max_value=pd.to_datetime('2023-12-31')))
+    filter_date2 = pd.to_datetime(st.sidebar.date_input('Select a maximum date to filter the dataset:',
+                                                    min_value=filter_date, max_value=pd.to_datetime('2023-12-31')))
+    select_date2 = st.sidebar.selectbox('Select the second date variable to display summary tables:', date_cols)
+    filter_date3 = pd.to_datetime(st.sidebar.date_input('Select another minimum date to filter the dataset:', 
+                                                    min_value=pd.to_datetime('2020-01-01'), max_value=pd.to_datetime('2023-12-31')))
+    filter_date4 = pd.to_datetime(st.sidebar.date_input('Select another maximum date to filter the dataset:',
+                                                    min_value=filter_date3, max_value=pd.to_datetime('2023-12-31')))
     str_cols = [
         col
         for col in clean_df.select_dtypes(include='str').columns
@@ -100,33 +126,73 @@ if st.sidebar.toggle('I would like more options...'):
     options = list(clean_df[select_var4].dropna().unique())
     range4 = st.sidebar.selectbox(f'Select second value for {select_var4}:', options)
 
-    var_list2 = [select_var1, select_var2, select_date, select_var3, select_var4]
-    if len(var_list2) != len(set(var_list2)):
-            st.error('You cannot select the same variables for filtering. Please try again.')
-# I use this so that the other error from not defining filter_df is ignored.
-            st.stop()
     try:
-            select =['Name', 'Age','Gender','Blood Type','Medical Condition', 'Date of Admission', 'Doctor', 'Hospital', 'Insurance Provider', 'Billing Amount ($)', 'Room Number', 'Admission Type', 'Discharge Date', 'Medication', 'Test Results', 'Days Spent']
-            filter_row=clean_df[(clean_df[select_var1] >= range1[0]) & (clean_df[select_var1] <= range1[1])
-                   &(clean_df[select_var2] >= range2[0])&(clean_df[select_var2] <= range2[1])
-                   &(clean_df[select_date] >= filter_date) & (clean_df[select_date] <= filter_date2)
-                   &(clean_df[select_var3] == range3)
-                   &(clean_df[select_var4] == range4)]
-            filter_df= filter_row[select]
-
-            if len(filter_df) == 0:
+        select =['Name', 'Age','Gender','Blood Type','Medical Condition', 'Date of Admission', 'Doctor', 'Hospital', 'Insurance Provider', 'Billing Amount ($)', 'Room Number', 'Admission Type', 'Discharge Date', 'Medication', 'Test Results', 'Days Spent']
+        filter_row=clean_df[(clean_df[select_var1] >= range1[0]) & (clean_df[select_var1] <= range1[1])
+                    &(clean_df[select_var2] >= range2[0])&(clean_df[select_var2] <= range2[1])
+                    &(clean_df[select_date] >= filter_date) & (clean_df[select_date] <= filter_date2)
+                    &(clean_df[select_var3] == range3)
+                    &(clean_df[select_var4] == range4)]
+        filter_df= filter_row[select]
+    
+        if len(filter_df) == 0:
                 st.warning('The filtered dataset is empty. Please adjust your filters.')
                 st.stop()
-
-# Although I made the minimum of filter_date2 to be the value of filter_date, I still added this error message in case the user changes the minimum date after selecting the maximum date.
-            if filter_date > filter_date2:
+    
+    # Although I made the minimum of filter_date2 to be the value of filter_date, I still added this error message in case the user changes the minimum date after selecting the maximum date.
+        if filter_date > filter_date2:
                 st.error('The minimum date cannot be greater than the maximum date. Please try again.')
                 st.stop()
-
+    
     except Exception as e:
             st.error(f'Table Error: {str(e)}')
-# As I am using multiple 'and' statements, I seperate then by row to make it easier to read since I don't have cells like in Jupyter.
+    # As I am using multiple 'and' statements, I seperate then by row to make it easier to read since I don't have cells like in Jupyter.
 
+
+    var_list2 = [select_var1, select_var2, select_var3, select_var4, select_date, select_date2]
+    if len(var_list2) != len(set(var_list2)):
+        st.error('You cannot select the same variables for filtering. Please try again.')
+        st.stop()
+
+elif st.sidebar.toggle('I would like to not filter by date variables but still filter by string variables...'):
+    str_cols = [
+            col
+            for col in clean_df.select_dtypes(include='str').columns
+            if col != 'Name'
+        ]
+    select_var3 = st.sidebar.selectbox('Select a string variable to display summary tables:', str_cols)
+    
+    options = list(clean_df[select_var3].dropna().unique())
+    range3 = st.sidebar.selectbox(f'Select value for {select_var3}:', options)
+        
+    select_var4= st.sidebar.selectbox('Select a second string variable to display summary tables:', str_cols)
+        
+    options = list(clean_df[select_var4].dropna().unique())
+    range4 = st.sidebar.selectbox(f'Select second value for {select_var4}:', options)
+    try:
+        select =['Name', 'Age','Gender','Blood Type','Medical Condition', 'Date of Admission', 'Doctor', 'Hospital', 'Insurance Provider', 'Billing Amount ($)', 'Room Number', 'Admission Type', 'Discharge Date', 'Medication', 'Test Results', 'Days Spent']
+        filter_row=clean_df[(clean_df[select_var1] >= range1[0]) & (clean_df[select_var1] <= range1[1])
+                    &(clean_df[select_var2] >= range2[0])&(clean_df[select_var2] <= range2[1])
+                    &(clean_df[select_var3] == range3)
+                    &(clean_df[select_var4] == range4)]
+        filter_df= filter_row[select]
+    
+        if len(filter_df) == 0:
+                st.warning('The filtered dataset is empty. Please adjust your filters.')
+                st.stop()
+    
+    # Although I made the minimum of filter_date2 to be the value of filter_date, I still added this error message in case the user changes the minimum date after selecting the maximum date.
+    
+    except Exception as e:
+            st.error(f'Table Error: {str(e)}')
+    # As I am using multiple 'and' statements, I seperate then by row to make it easier to read since I don't have cells like in Jupyter.
+
+
+    var_list2 = [select_var1, select_var2, select_var3, select_var4]
+    if len(var_list2) != len(set(var_list2)):
+        st.error('You cannot select the same variables for filtering. Please try again.')
+        st.stop()
+        
 # Creating tabs
 tab1, tab2, tab3 = st.tabs(['Summary Tables', 'Statistical Tests','Predictive Model'])
 
