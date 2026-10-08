@@ -276,7 +276,7 @@ with tab3:
         test_mapping={'Normal':0, 'Abnormal':1, 'Other':-1}
         test_mapped= test_mapping[test]
         
-        if admin_mapped or ins_mapped or medic_mapped == -1:
+        if admin_mapped or ins_mapped or medic_mapped or test_mapped == -1:
             st.warning("Please note that the predicted value will be less accurate and it will be predicted lower than it would, as 'Other' has been selected.")
         if gender == 'Female':
             gender_female = 1
