@@ -6,9 +6,10 @@ import scipy as sp
 import seaborn as sns
 import joblib
 import plotly.express as px
-from utils import anova_load, heat_map , normal, shapiro, load_fullmodel, chi_2
+from utils import anova_load, heat_map , normal, shapiro, load_fullmodel, chi_2, filted
 from scipy.stats import norm, chi2_contingency
 from scipy import stats
+from matplotlib import pyplot as plt
 st.set_page_config(page_title= 'Hospital Data Science Project')
 st.title('Interactive Statistical Analysis Dashboard')
 
@@ -24,6 +25,7 @@ clean_df=load_data()
 #Setting up the website titles and summart filters
 
 st.subheader('Summary Tables Analysis')
+st.info('This dashboard allows you to filter the dataset and view summary tables, statistical tests, and a predictive model. Please use the sidebar to select your filters and settings.')
 st.sidebar.header('Filter and Settings')
 num_cols = [
         col
@@ -200,6 +202,28 @@ with tab1:
     
     st.subheader('Filtered Summary Tables')
     st.dataframe(filter_df,width= 'stretch')
+    st.subheader('Distribution of Ages Across the Dataset')
+    if st.toggle('Generate Age Distribution Histogram'):
+        age_fig = filted()
+        st.pyplot(age_fig)
+    st.subheader('Distribution of Ages Across the Filtered Dataset')
+    if st.toggle('Generate Filtered Age Distribution Histogram'):
+             normo2 = plt.figure(figsize=(15, 12))
+             mu = filter_df['Age'].mean()
+             sigma = filter_df['Age'].std()
+             plt.hist(filter_df['Age'], bins=30, density=True, alpha=0.5, color='blue', edgecolor='white')
+             xmin, xmax = plt.xlim()
+             x=np.linspace(xmin, xmax, 100)
+             p= norm.pdf(x,mu, sigma)
+             plt.plot(x,p,color='darkblue', linewidth=2.5,label=f'Normal curve\n(Mean={mu:.2f},Standard Deviation={sigma:.2f})')
+             plt.title('The Normal Curve Distribution of Age via Filtered Merits',fontsize=14,fontweight='bold')
+             plt.xlabel('Age', fontsize=12)
+             plt.ylabel('Density', fontsize=12)
+             plt.grid(axis='y', linestyle='--',alpha=0.3)
+             plt.legend(frameon=True, facecolor='white', edgecolor="none")
+             plt.tight_layout()
+             plt.show()
+             st.pyplot(normo2)
 
 with tab2:
     st.header('Statistical Tests')
@@ -250,7 +274,7 @@ with tab3:
         
        
         admin = st.selectbox('What would you say is your admission type?:', ['Elective','Urgent','Emergency','Other'])
-        medic = st.selectbox('What is your Medical Condition?:', ['Diabetes','Arthritis','Obesity', 'Cancer',' Asthma', 'Hypertension','Other'])
+        medic = st.selectbox('What is your Medical Condition?:',['Hypertension', 'Asthma' , 'Diabetes', 'Arthritis', 'Cancer', 'Heart Disease', 'Stroke', 'Kidney Disease', 'Liver Disease', 'Obesity', 'Depression', 'Anxiety', 'COPD', 'Osteoporosis', 'Alzheimer\'s Disease', 'Parkinson\'s Disease', 'Multiple Sclerosis', 'Epilepsy', 'HIV/AIDS', 'Other'])
         ins= st.selectbox('Who is your Insurance Provider?:', ['UnitedHealthcare','Cigna','Medicare','Blue Cross','Aetna', 'Other'])
         test= st.selectbox('What were your Test Results?:', ['Normal','Abnormal', 'Inconclusive', 'Other'])
     
@@ -266,18 +290,27 @@ with tab3:
         max_days= clean_df['Days Spent'].max()
         if days > max_days :
             st.warning(f'Warning :The number of days chosen ({days}) is outside the data range ({min_days}- {max_days}). Are you sure you want to proceed? ')
-         
-        admin_mapping={'Elective':0, 'Emergency':1, 'Urgent':2, 'Other':-1}
-        admin_mapped=admin_mapping[admin]
-        ins_mapping ={'UnitedHealthcare':0,'Cigna':1,'Aetna':2,'Blue Cross':3,'Medicare':4,'Humana':5,'Kaiser Permanente':6,'Anthem':7,'Centene':8,'Molina Healthcare':9, 'Other':-1}
-        ins_mapped= ins_mapping[ins]
-        medic_mapping ={'Hypertension':0, 'Asthma':1, 'Diabetes':2, 'Arthritis':3, 'Cancer':4, 'Heart Disease':5, 'Stroke':6, 'Kidney Disease':7, 'Liver Disease':8, 'Obesity':9, 'Depression':10, 'Anxiety':11, 'COPD':12, 'Osteoporosis':13, 'Alzheimer\'s Disease':14, 'Parkinson\'s Disease':15, 'Multiple Sclerosis':16, 'Epilepsy':17, 'HIV/AIDS':18, 'Other':-1}
-        medic_mapped = medic_mapping[medic]
-        test_mapping={'Normal':0, 'Abnormal':1, 'Other':-1}
-        test_mapped= test_mapping[test]
+        try: 
+            admin_mapping={'Elective':0, 'Emergency':1, 'Urgent':2, 'Other':-1}
+            admin_mapped=admin_mapping[admin]
+            ins_mapping ={'UnitedHealthcare':0,'Cigna':1,'Aetna':2,'Blue Cross':3,'Medicare':4,'Humana':5,'Kaiser Permanente':6,'Anthem':7,'Centene':8,'Molina Healthcare':9, 'Other':-1}
+            ins_mapped= ins_mapping[ins]
+            medic_mapping ={'Hypertension': 0, 'Asthma' :1, 'Diabetes':2, 'Arthritis':3, 'Cancer':4, 'Heart Disease':5, 'Stroke':6, 'Kidney Disease':7, 'Liver Disease':8, 'Obesity':9, 'Depression':10, 'Anxiety':11, 'COPD':12, 'Osteoporosis':13, 'Alzheimer\'s Disease':14, 'Parkinson\'s Disease':15, 'Multiple Sclerosis':16, 'Epilepsy':17, 'HIV/AIDS':18, 'Other':-1}
+            medic_mapped = medic_mapping[medic]
+            test_mapping={'Normal':0, 'Abnormal':1,'Inconclusive':2 ,'Other':-1}
+            test_mapped= test_mapping[test]
+
+        except Exception as e: 
+             st.error(f'Mapping Error :{str(e)}')
+        # Was exception handling the mappings at this point.     
         
-        if admin_mapped or ins_mapped or medic_mapped or test_mapped == -1:
+        if admin_mapped or ins_mapped or test_mapped == -1:
             st.warning("Please note that the predicted value will be less accurate and it will be predicted lower than it would, as 'Other' has been selected.")
+        if medic_mapped == -1:
+            st.warning("Please note that the predicted value will be less accurate and it will be predicted higher than it would, as 'Other' has been selected.")
+        # I placed the medic_mapped condition separately because it is the only variable that has a positive correlation with the Billing Amount, while the other variables have a negative correlation with the Billing Amount. Therefore, if 'Other' is selected for the Medical Condition, it will be predicted higher than it would, while if 'Other' is selected for the other variables, it will be predicted lower than it would.
+        # Placing them with the rest of the maps only returned errors as it conflicted with the other conditions. Therefore, I placed it separately to avoid them. 
+
         if gender == 'Female':
             gender_female = 1
             gender_male = 0

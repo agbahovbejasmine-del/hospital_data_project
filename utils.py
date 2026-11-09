@@ -121,3 +121,22 @@ def chi_2():
     
     '''
     return chi2_results
+
+def filted():
+    clean_df= pd.read_csv('clean_healthcare_dataset.csv')
+    normo = plt.figure(figsize=(15, 12))
+    mu = clean_df['Age'].mean()
+    sigma = clean_df['Age'].std()
+    plt.hist(clean_df['Age'], bins=30, density=True, alpha=0.5, color='blue', edgecolor='white')
+    xmin, xmax = plt.xlim()
+    x=np.linspace(xmin, xmax, 100)
+    p= norm.pdf(x,mu, sigma)
+    plt.plot(x,p,color='darkblue', linewidth=2.5,label=f'Normal curve\n(Mean={mu:.2f},Standard Deviation={sigma:.2f})')
+    plt.title('The Normal Curve Distribution of Age',fontsize=14,fontweight='bold')
+    plt.xlabel('Age', fontsize=12)
+    plt.ylabel('Density', fontsize=12)
+    plt.grid(axis='y', linestyle='--',alpha=0.3)
+    plt.legend(frameon=True, facecolor='white', edgecolor="none")
+    plt.tight_layout()
+    plt.show()
+    return normo
